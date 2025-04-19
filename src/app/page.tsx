@@ -1,103 +1,256 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useRef } from "react";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [display, setDisplay] = useState("0");
+  const [memory, setMemory] = useState<number>(0);
+  const [previousOperator, setPreviousOperator] = useState<string | null>(null);
+  const [newNumber, setNewNumber] = useState(true);
+  const [memoryStored, setMemoryStored] = useState<number | null>(null);
+  const [expression, setExpression] = useState<string[]>([]);
+  const [openParentheses, setOpenParentheses] = useState(0);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const displayRef = useRef<HTMLDivElement>(null);
+
+  const adjustFontSize = () => {
+    if (displayRef.current) {
+      const element = displayRef.current;
+      const container = element.parentElement as HTMLElement;
+
+      element.style.fontSize = '1.875rem';
+
+      while (element.scrollWidth > container.clientWidth && parseFloat(getComputedStyle(element).fontSize) > 12) {
+        const currentSize = parseFloat(getComputedStyle(element).fontSize);
+        element.style.fontSize = `${currentSize - 1}px`;
+      }
+    }
+  };
+
+  useEffect(() => {
+    adjustFontSize();
+  }, [display]);
+
+  const handleNumber = (num: string) => {
+    if (newNumber) {
+      setDisplay(num);
+      setNewNumber(false);
+    } else {
+      setDisplay(display === "0" ? num : display + num);
+    }
+  };
+
+  const handleOperator = (operator: string) => {
+    const current = parseFloat(display);
+    setNewNumber(true);
+
+    if (previousOperator) {
+      calculate();
+    } else {
+      setMemory(current);
+    }
+    setPreviousOperator(operator);
+  };
+
+  const calculate = () => {
+    if (!previousOperator) return;
+
+    const current = parseFloat(display);
+    let result = memory;
+
+    switch (previousOperator) {
+      case "+":
+        result += current;
+        break;
+      case "-":
+        result -= current;
+        break;
+      case "×":
+        result *= current;
+        break;
+      case "÷":
+        result /= current;
+        break;
+    }
+
+    setMemory(result);
+    setDisplay(result.toString());
+    setPreviousOperator(null);
+  };
+
+  const handleScientific = (operation: string) => {
+    const current = parseFloat(display);
+    let result: number;
+
+    try {
+      switch (operation) {
+        case "sin":
+          result = Math.sin(current * Math.PI / 180);
+          break;
+        case "cos":
+          result = Math.cos(current * Math.PI / 180);
+          break;
+        case "tan":
+          if (Math.abs(current % 180) === 90) {
+            throw new Error("Undefined");
+          }
+          result = Math.tan(current * Math.PI / 180);
+          break;
+        case "√":
+          if (current < 0) {
+            throw new Error("Invalid input");
+          }
+          result = Math.sqrt(current);
+          break;
+        case "x²":
+          result = Math.pow(current, 2);
+          break;
+        case "log":
+          if (current <= 0) {
+            throw new Error("Invalid input");
+          }
+          result = Math.log10(current);
+          break;
+        case "ln":
+          if (current <= 0) {
+            throw new Error("Invalid input");
+          }
+          result = Math.log(current);
+          break;
+        case "!":
+          if (current < 0 || !Number.isInteger(current)) {
+            throw new Error("Invalid input");
+          }
+          result = factorial(current);
+          break;
+        case "1/x":
+          if (current === 0) {
+            throw new Error("Cannot divide by zero");
+          }
+          result = 1 / current;
+          break;
+        case "e^x":
+          result = Math.exp(current);
+          break;
+        default:
+          throw new Error("Invalid operation");
+      }
+
+      result = Number(result.toFixed(8));
+      setDisplay(result.toString());
+    } catch (error) {
+      setDisplay(error instanceof Error ? error.message : "Error");
+    }
+    setNewNumber(true);
+  };
+
+  const factorial = (n: number): number => {
+    if (n === 0 || n === 1) return 1;
+    return n * factorial(n - 1);
+  };
+
+  const handleMemory = (operation: string) => {
+    const current = parseFloat(display);
+
+    switch (operation) {
+      case "M+":
+        setMemoryStored((prev) => (prev ?? 0) + current);
+        break;
+      case "M-":
+        setMemoryStored((prev) => (prev ?? 0) - current);
+        break;
+      case "MR":
+        if (memoryStored !== null) {
+          setDisplay(memoryStored.toString());
+          setNewNumber(true);
+        }
+        break;
+      case "MC":
+        setMemoryStored(null);
+        break;
+    }
+  };
+
+  const handleParentheses = (type: "(" | ")") => {
+    if (type === "(") {
+      setOpenParentheses(prev => prev + 1);
+      setExpression(prev => [...prev, "("]);
+    } else if (type === ")" && openParentheses > 0) {
+      setOpenParentheses(prev => prev - 1);
+      setExpression(prev => [...prev, ")"]);
+    }
+  };
+
+  const clear = () => {
+    setDisplay("0");
+    setMemory(0);
+    setPreviousOperator(null);
+    setNewNumber(true);
+    setMemoryStored(null);
+    setExpression([]);
+    setOpenParentheses(0);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl w-[480px]">
+        <div className="mb-4">
+          <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg relative">
+            <div 
+              ref={displayRef}
+              className="calculator-display text-right font-mono dark:text-white whitespace-nowrap overflow-hidden"
+            >
+              {display}
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <div className="grid grid-cols-5 gap-2">
+          {/* Memory Functions */}
+          <button onClick={() => handleMemory("MC")} className="p-3 bg-purple-500 text-white rounded hover:bg-purple-600">MC</button>
+          <button onClick={() => handleMemory("MR")} className="p-3 bg-purple-500 text-white rounded hover:bg-purple-600">MR</button>
+          <button onClick={() => handleMemory("M-")} className="p-3 bg-purple-500 text-white rounded hover:bg-purple-600">M-</button>
+          <button onClick={() => handleMemory("M+")} className="p-3 bg-purple-500 text-white rounded hover:bg-purple-600">M+</button>
+          <button onClick={clear} className="p-3 bg-red-500 text-white rounded hover:bg-red-600">C</button>
+
+          {/* Advanced Functions */}
+          <button onClick={() => handleScientific("log")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">log</button>
+          <button onClick={() => handleScientific("ln")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">ln</button>
+          <button onClick={() => handleScientific("e^x")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">e^x</button>
+          <button onClick={() => handleScientific("!")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">n!</button>
+          <button onClick={() => handleScientific("1/x")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">1/x</button>
+
+          {/* Scientific Functions */}
+          <button onClick={() => handleScientific("sin")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">sin</button>
+          <button onClick={() => handleScientific("cos")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">cos</button>
+          <button onClick={() => handleScientific("tan")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">tan</button>
+          <button onClick={() => handleParentheses("(")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">(</button>
+          <button onClick={() => handleParentheses(")")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">)</button>
+
+          {/* Numbers and Basic Operations */}
+          <button onClick={() => handleNumber("7")} className="p-3 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 dark:text-white">7</button>
+          <button onClick={() => handleNumber("8")} className="p-3 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 dark:text-white">8</button>
+          <button onClick={() => handleNumber("9")} className="p-3 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 dark:text-white">9</button>
+          <button onClick={() => handleScientific("√")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">√</button>
+          <button onClick={() => handleOperator("÷")} className="p-3 bg-orange-500 text-white rounded hover:bg-orange-600">÷</button>
+
+          <button onClick={() => handleNumber("4")} className="p-3 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 dark:text-white">4</button>
+          <button onClick={() => handleNumber("5")} className="p-3 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 dark:text-white">5</button>
+          <button onClick={() => handleNumber("6")} className="p-3 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 dark:text-white">6</button>
+          <button onClick={() => handleScientific("x²")} className="p-3 bg-blue-500 text-white rounded hover:bg-blue-600">x²</button>
+          <button onClick={() => handleOperator("×")} className="p-3 bg-orange-500 text-white rounded hover:bg-orange-600">×</button>
+
+          <button onClick={() => handleNumber("1")} className="p-3 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 dark:text-white">1</button>
+          <button onClick={() => handleNumber("2")} className="p-3 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 dark:text-white">2</button>
+          <button onClick={() => handleNumber("3")} className="p-3 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 dark:text-white">3</button>
+          <button onClick={calculate} className="p-3 bg-orange-500 text-white rounded hover:bg-orange-600 row-span-2">=</button>
+          <button onClick={() => handleOperator("-")} className="p-3 bg-orange-500 text-white rounded hover:bg-orange-600">-</button>
+
+          <button onClick={() => handleNumber("0")} className="p-3 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 dark:text-white col-span-2">0</button>
+          <button onClick={() => handleNumber(".")} className="p-3 bg-gray-200 dark:bg-gray-600 rounded hover:bg-gray-300 dark:hover:bg-gray-500 dark:text-white">.</button>
+          <button onClick={() => handleOperator("+")} className="p-3 bg-orange-500 text-white rounded hover:bg-orange-600">+</button>
+        </div>
+      </div>
     </div>
   );
 }
