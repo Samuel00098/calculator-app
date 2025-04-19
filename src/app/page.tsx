@@ -34,9 +34,15 @@ export default function Home() {
   const handleNumber = (num: string) => {
     if (newNumber) {
       setDisplay(num);
+      setExpression(prev => [...prev, num]);
       setNewNumber(false);
     } else {
       setDisplay(display === "0" ? num : display + num);
+      if (display === "0") {
+        setExpression(prev => [...prev.slice(0, -1), num]);
+      } else {
+        setExpression(prev => [...prev.slice(0, -1), prev[prev.length - 1] + num]);
+      }
     }
   };
 
@@ -50,6 +56,7 @@ export default function Home() {
       setMemory(current);
     }
     setPreviousOperator(operator);
+    setExpression(prev => [...prev, operator]);
   };
 
   const calculate = () => {
@@ -69,6 +76,11 @@ export default function Home() {
         result *= current;
         break;
       case "÷":
+        if (current === 0) {
+          setDisplay("Error");
+          setExpression([]);
+          return;
+        }
         result /= current;
         break;
     }
@@ -76,6 +88,7 @@ export default function Home() {
     setMemory(result);
     setDisplay(result.toString());
     setPreviousOperator(null);
+    setExpression(prev => [...prev.slice(0, -2), result.toString()]);
   };
 
   const handleScientific = (operation: string) => {
@@ -196,6 +209,9 @@ export default function Home() {
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl w-[480px]">
         <div className="mb-4">
           <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg relative">
+            <div className="text-right font-mono text-sm text-gray-500 dark:text-gray-400 mb-1">
+              {expression.join(' ')}
+            </div>
             <div 
               ref={displayRef}
               className="calculator-display text-right font-mono dark:text-white whitespace-nowrap overflow-hidden"
